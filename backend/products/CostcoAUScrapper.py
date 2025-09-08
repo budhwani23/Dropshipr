@@ -220,6 +220,15 @@ class CostcoAUScrapper:
                             'Maximum Quantity': r.get('Maximum Quantity'),
                         })
 
+                        # Apply store+vendor pricing and inventory rules
+                        from .rules_engine import StoreVendorRules
+                        vendor_price = processed['final_price'] + processed['calculated_shipping_price']
+                        vendor_qty = processed['final_inventory']
+                        marketplace_price = StoreVendorRules.apply_price_rules(product, vendor_price)
+                        marketplace_inventory = StoreVendorRules.apply_inventory_rules(product, vendor_qty)
+                        processed['final_price'] = marketplace_price
+                        processed['final_inventory'] = marketplace_inventory
+
                         Scrape.objects.create(
                             product=product,
                             scrape_time=tz_now,
@@ -241,12 +250,16 @@ class CostcoAUScrapper:
                         VendorPrice.objects.update_or_create(
                             product=product,
                             defaults={
-                                'price': processed['final_price'],
-                                'stock': processed['final_inventory'],
+                                'price': vendor_price,
+                                'stock': vendor_qty,
                                 'error_code': processed['error_details'],
                                 'scraped_at': tz_now
                             }
                         )
+
+                        product.marketplace_final_price = marketplace_price
+                        product.marketplace_final_inventory = marketplace_inventory
+                        product.save(update_fields=['marketplace_final_price','marketplace_final_inventory'])
                         saved += 1
                         
             except Exception as chunk_error:

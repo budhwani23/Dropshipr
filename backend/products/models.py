@@ -67,6 +67,18 @@ class Product(models.Model):
         blank=True,
         help_text="The upload session that created this product"
     )
+    marketplace_final_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Latest calculated marketplace price per store+vendor rules"
+    )
+    marketplace_final_inventory = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Latest calculated marketplace inventory per store+vendor rules"
+    )
 
     class Meta:
         verbose_name = "Product"

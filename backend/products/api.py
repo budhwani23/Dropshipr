@@ -532,6 +532,8 @@ EMAIL_WEBHOOK_TIMEOUT = 30  # seconds
 def generate_system_products_csv() -> str:
     """
     Generate system_products.csv file and return the file path
+    Now includes marketplace_final_price and marketplace_final_inventory.
+    If missing on Product but vendor values exist, compute via StoreVendorRules.
     """
     try:
         # Get all products with related data including vendor prices
@@ -552,24 +554,34 @@ def generate_system_products_csv() -> str:
             
             # Write headers
             headers = [
-                'Vendor Name',
-                'Vendor ID',
-                'Is Variation',
-                'Variation ID', 
-                'Marketplace Name',
-                'Store Name',
-                'Marketplace Parent SKU',
-                'Marketplace Child SKU',
-                'Marketplace ID',
-                'Vendor Price',
-                'Vendor Inventory'
+                'Vendor Name', 'Vendor ID', 'Is Variation', 'Variation ID',
+                'Marketplace Name', 'Store Name', 'Marketplace Parent SKU',
+                'Marketplace Child SKU', 'Marketplace ID',
+                'Vendor Price', 'Vendor Inventory',
+                'Marketplace Price', 'Marketplace Inventory'
             ]
             writer.writerow(headers)
             
             # Write product data
             for product in products:
-                vendor_price = product.latest_price
-                
+                vendor_price_row = product.latest_price
+                vendor_price_val = vendor_price_row.price if vendor_price_row and vendor_price_row.price is not None else None
+                vendor_stock_val = vendor_price_row.stock if vendor_price_row and vendor_price_row.stock is not None else None
+
+                # Determine marketplace values: use stored fields if present, else compute
+                marketplace_price_val = product.marketplace_final_price
+                marketplace_inv_val = product.marketplace_final_inventory
+
+                if (marketplace_price_val is None or marketplace_inv_val is None) and (vendor_price_val is not None and vendor_stock_val is not None):
+                    try:
+                        from .rules_engine import StoreVendorRules
+                        # vendor_price includes shipping; we don't have shipping in VendorPrice, assume included in price
+                        marketplace_price_val = StoreVendorRules.apply_price_rules(product, Decimal(str(vendor_price_val)))
+                        marketplace_inv_val = StoreVendorRules.apply_inventory_rules(product, int(vendor_stock_val))
+                    except Exception:
+                        # On any error in rules, leave marketplace values blank
+                        pass
+
                 row = [
                     product.vendor.name if product.vendor else '',
                     product.vendor_sku or '',
@@ -580,8 +592,10 @@ def generate_system_products_csv() -> str:
                     product.marketplace_parent_sku or '',
                     product.marketplace_child_sku or '',
                     product.marketplace_external_id or '',
-                    vendor_price.price if vendor_price and vendor_price.price else '',
-                    vendor_price.stock if vendor_price and vendor_price.stock else '0'
+                    vendor_price_val if vendor_price_val is not None else '',
+                    vendor_stock_val if vendor_stock_val is not None else '0',
+                    marketplace_price_val if marketplace_price_val is not None else '',
+                    marketplace_inv_val if marketplace_inv_val is not None else ''
                 ]
                 writer.writerow(row)
         
@@ -592,8 +606,13 @@ def generate_system_products_csv() -> str:
         logger.error(f"Error generating system products CSV: {e}")
         return ""
 
+
 def build_system_products_csv_bytes() -> bytes:
-    """Generate the system products CSV in-memory (bytes), matching the /export endpoint."""
+    """
+    Build system products CSV bytes for API response.
+    Includes marketplace price and inventory; computes them if not present,
+    but only when vendor price/stock are available.
+    """
     products = Product.objects.select_related('vendor', 'marketplace', 'store').prefetch_related('latest_price').all()
     import io as _io
     import csv as _csv
@@ -602,11 +621,26 @@ def build_system_products_csv_bytes() -> bytes:
     headers = [
         'Vendor Name', 'Vendor ID', 'Is Variation', 'Variation ID',
         'Marketplace Name', 'Store Name', 'Marketplace Parent SKU',
-        'Marketplace Child SKU', 'Marketplace ID', 'Vendor Price', 'Vendor Inventory'
+        'Marketplace Child SKU', 'Marketplace ID', 'Vendor Price', 'Vendor Inventory',
+        'Marketplace Price', 'Marketplace Inventory'
     ]
     writer.writerow(headers)
     for product in products:
-        vendor_price = product.latest_price
+        vendor_price_row = product.latest_price
+        vendor_price_val = vendor_price_row.price if vendor_price_row and vendor_price_row.price is not None else None
+        vendor_stock_val = vendor_price_row.stock if vendor_price_row and vendor_price_row.stock is not None else None
+
+        marketplace_price_val = product.marketplace_final_price
+        marketplace_inv_val = product.marketplace_final_inventory
+
+        if (marketplace_price_val is None or marketplace_inv_val is None) and (vendor_price_val is not None and vendor_stock_val is not None):
+            try:
+                from .rules_engine import StoreVendorRules
+                marketplace_price_val = StoreVendorRules.apply_price_rules(product, Decimal(str(vendor_price_val)))
+                marketplace_inv_val = StoreVendorRules.apply_inventory_rules(product, int(vendor_stock_val))
+            except Exception:
+                pass
+
         row = [
             product.vendor.name if product.vendor else '',
             product.vendor_sku or '',
@@ -617,8 +651,10 @@ def build_system_products_csv_bytes() -> bytes:
             product.marketplace_parent_sku or '',
             product.marketplace_child_sku or '',
             product.marketplace_external_id or '',
-            vendor_price.price if vendor_price and vendor_price.price else '',
-            vendor_price.stock if vendor_price and vendor_price.stock else '0',
+            vendor_price_val if vendor_price_val is not None else '',
+            vendor_stock_val if vendor_stock_val is not None else '0',
+            marketplace_price_val if marketplace_price_val is not None else '',
+            marketplace_inv_val if marketplace_inv_val is not None else ''
         ]
         writer.writerow(row)
     return buffer.getvalue().encode('utf-8')
@@ -1440,7 +1476,8 @@ def bulk_delete_products(request, file: UploadedFile = File(...)):
 @router.get("/export/")
 def export_products(request):
     """
-    Export all current products as CSV with vendor price and inventory data
+    Export all current products as CSV with vendor price/inventory and marketplace price/inventory.
+    Computes marketplace values if missing and vendor values are present.
     """
     try:
         # Get all products with related data including vendor prices
@@ -1453,26 +1490,32 @@ def export_products(request):
         # Create CSV writer
         writer = csv.writer(response)
         
-        # Write headers - added Vendor Price and Vendor Inventory
+        # Write headers
         headers = [
-            'Vendor Name',
-            'Vendor ID',
-            'Is Variation',
-            'Variation ID', 
-            'Marketplace Name',
-            'Store Name',
-            'Marketplace Parent SKU',
-            'Marketplace Child SKU',
-            'Marketplace ID',
-            'Vendor Price',  # New column
-            'Vendor Inventory'  # New column
+            'Vendor Name', 'Vendor ID', 'Is Variation', 'Variation ID', 
+            'Marketplace Name', 'Store Name', 'Marketplace Parent SKU',
+            'Marketplace Child SKU', 'Marketplace ID',
+            'Vendor Price', 'Vendor Inventory',
+            'Marketplace Price', 'Marketplace Inventory'
         ]
         writer.writerow(headers)
         
         # Write product data
         for product in products:
-            # Get the latest vendor price for this product
-            vendor_price = product.latest_price  # Gets the related VendorPrice object
+            vendor_price_row = product.latest_price
+            vendor_price_val = vendor_price_row.price if vendor_price_row and vendor_price_row.price is not None else None
+            vendor_stock_val = vendor_price_row.stock if vendor_price_row and vendor_price_row.stock is not None else None
+
+            marketplace_price_val = product.marketplace_final_price
+            marketplace_inv_val = product.marketplace_final_inventory
+
+            if (marketplace_price_val is None or marketplace_inv_val is None) and (vendor_price_val is not None and vendor_stock_val is not None):
+                try:
+                    from .rules_engine import StoreVendorRules
+                    marketplace_price_val = StoreVendorRules.apply_price_rules(product, Decimal(str(vendor_price_val)))
+                    marketplace_inv_val = StoreVendorRules.apply_inventory_rules(product, int(vendor_stock_val))
+                except Exception:
+                    pass
             
             row = [
                 product.vendor.name if product.vendor else '',
@@ -1483,9 +1526,11 @@ def export_products(request):
                 product.store.name if product.store else '',
                 product.marketplace_parent_sku or '',
                 product.marketplace_child_sku or '',
-                product.marketplace_external_id or '',  # External marketplace ID
-                vendor_price.price if vendor_price and vendor_price.price else '',  # Vendor Price
-                vendor_price.stock if vendor_price and vendor_price.stock else '0'  # Vendor Inventory
+                product.marketplace_external_id or '',
+                vendor_price_val if vendor_price_val is not None else '',
+                vendor_stock_val if vendor_stock_val is not None else '0',
+                marketplace_price_val if marketplace_price_val is not None else '',
+                marketplace_inv_val if marketplace_inv_val is not None else ''
             ]
             writer.writerow(row)
         
@@ -1850,10 +1895,19 @@ def save_ebayau_scraping_results(results: List[Dict[str, Any]]) -> List[int]:
             db_logger.info(f"Applying business rules for product {product_id}")
             processed_data = eBayAUBusinessRules.process_scraped_data(result)
             db_logger.info(f"Business rules processed - needs_rescrape: {processed_data['needs_rescrape']}")
-            db_logger.info(f"Final price: {processed_data['final_price']}")
-            db_logger.info(f"Final inventory: {processed_data['final_inventory']}")
+            db_logger.info(f"Vendor (cleaned) price: {processed_data['final_price']}")
+            db_logger.info(f"Vendor inventory: {processed_data['final_inventory']}")
+
+            # Apply store+vendor pricing and inventory rules: vendor side -> marketplace
+            from .rules_engine import StoreVendorRules
+            vendor_price = processed_data['final_price'] + processed_data['calculated_shipping_price']
+            vendor_qty = processed_data['final_inventory']
+            marketplace_price = StoreVendorRules.apply_price_rules(product, vendor_price)
+            marketplace_inventory = StoreVendorRules.apply_inventory_rules(product, vendor_qty)
+            processed_data['final_price'] = marketplace_price
+            processed_data['final_inventory'] = marketplace_inventory
             
-            # Create Scrape record
+            # Create Scrape record (persist marketplace results for history)
             db_logger.info(f"Creating Scrape record for product {product_id}")
             scrape = Scrape.objects.create(
                 product=product,
@@ -1874,28 +1928,28 @@ def save_ebayau_scraping_results(results: List[Dict[str, Any]]) -> List[int]:
             )
             db_logger.info(f"Scrape record created with ID: {scrape.id}")
             
-            # Update VendorPrice with final calculated values
+            # Update VendorPrice with vendor (not marketplace) values
             db_logger.info(f"Updating VendorPrice for product {product_id}")
-            db_logger.info(f"Price: {processed_data['final_price']}, Stock: {processed_data['final_inventory']}")
-            
-            vendor_price, created = VendorPrice.objects.update_or_create(
+            vendor_price_obj, created = VendorPrice.objects.update_or_create(
                 product=product,
                 defaults={
-                    'price': processed_data['final_price'],
-                    'stock': processed_data['final_inventory'],  # Using final_inventory as stock
+                    'price': vendor_price,
+                    'stock': vendor_qty,
                     'error_code': processed_data['error_details'],
                     'scraped_at': scrape_time
                 }
             )
-            
             if created:
                 db_logger.info(f"VendorPrice record CREATED for product {product_id}")
             else:
                 db_logger.info(f"VendorPrice record UPDATED for product {product_id}")
             
-            db_logger.info(f"VendorPrice ID: {vendor_price.id}")
+            # Persist latest marketplace results on Product
+            product.marketplace_final_price = marketplace_price
+            product.marketplace_final_inventory = marketplace_inventory
+            product.save(update_fields=['marketplace_final_price','marketplace_final_inventory'])
             
-            # Track products that need rescraping (return actual product IDs)
+            # Track rescrape candidates
             if processed_data['needs_rescrape']:
                 rescrape_product_ids.append(product.id)
                 db_logger.info(f"Product {product_id} marked for rescraping")
