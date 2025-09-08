@@ -240,28 +240,53 @@ const ProductMappingTable = () => {
     setDragOver(false)
     
     const files = e.dataTransfer.files
-    if (files.length > 0) {
+    if (!files || files.length === 0) return
+    
+    if (selectedTemplate === 'upload') {
+      ;(async () => {
+        for (const file of files) {
+          const validationError = validateFile(file)
+          if (validationError) {
+            setError(validationError)
+            continue
+          }
+          await handleFileUploadLogic(file)
+        }
+      })()
+    } else {
       handleFileSelection(files[0])
     }
   }
 
   // Handle file selection (not upload yet)
-  const handleFileSelection = (file) => {
-    if (!file) return
+  const handleFileSelection = (fileOrFiles) => {
+    const files = fileOrFiles instanceof FileList ? Array.from(fileOrFiles) : [fileOrFiles]
+    if (files.length === 0) return
 
     // Clear previous messages
     setError(null)
     setSuccess(null)
 
-    // Validate file
-    const validationError = validateFile(file)
-    if (validationError) {
-      setError(validationError)
-      return
+    if (selectedTemplate === 'upload') {
+      ;(async () => {
+        for (const file of files) {
+          const validationError = validateFile(file)
+          if (validationError) {
+            setError(validationError)
+            continue
+          }
+          await handleFileUploadLogic(file)
+        }
+      })()
+    } else {
+      const file = files[0]
+      const validationError = validateFile(file)
+      if (validationError) {
+        setError(validationError)
+        return
+      }
+      setSelectedFile(file)
     }
-
-    // Set the selected file for preview
-    setSelectedFile(file)
     
     // Clear the file input to allow selecting the same file again
     const fileInput = document.getElementById('file-upload')
@@ -957,10 +982,11 @@ const ProductMappingTable = () => {
                     <span className="text-blue-600 hover:text-blue-500 cursor-pointer font-medium">
                       Drag and drop a file or browse
                     </span>
-                    <input
+                                          <input
                       type="file"
                       accept=".csv,.xlsx,.xls"
-                      onChange={(e) => handleFileSelection(e.target.files[0])}
+                      multiple
+                      onChange={(e) => handleFileSelection(e.target.files)}
                       className="hidden"
                       id="file-upload"
                     />

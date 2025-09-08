@@ -896,7 +896,10 @@ def _process_upload_in_background(upload_id: int):
             'itemsProcessed': processed_count
         })
         upload.note = json.dumps(info)
-        upload.save(update_fields=['note'])
+        upload.status = 'completed'
+        upload.processed_count = processed_count
+        upload.completed_at = timezone.now()
+        upload.save(update_fields=['note', 'status', 'processed_count', 'completed_at'])
         
         # Update email data for success notification
         email_data.update({
@@ -921,7 +924,10 @@ def _process_upload_in_background(upload_id: int):
                 'errorType': e.error_type
             })
             upload.note = json.dumps(info)
-            upload.save(update_fields=['note'])
+            upload.status = 'failed'
+            upload.error_message = str(e)
+            upload.completed_at = timezone.now()
+            upload.save(update_fields=['note', 'status', 'error_message', 'completed_at'])
             
             # Update email data for failure notification
             email_data.update({
@@ -945,7 +951,10 @@ def _process_upload_in_background(upload_id: int):
                 'errorLogs': str(e)
             })
             upload.note = json.dumps(info)
-            upload.save(update_fields=['note'])
+            upload.status = 'failed'
+            upload.error_message = str(e)
+            upload.completed_at = timezone.now()
+            upload.save(update_fields=['note', 'status', 'error_message', 'completed_at'])
             
             # Update email data for failure notification
             email_data.update({
@@ -1017,9 +1026,9 @@ def upload_file(request, file: UploadedFile = File(...)):
                 "errorType": "FILE_PARSING_ERROR"
             }
         
-        # Initialize status and persist for polling
+        # Initialize status and persist for polling (queued)
         status_info = {
-            'status': 'processing',
+            'status': 'queued',
             'vendorName': vendor_name,
             'marketplace': marketplace_name,
             'itemsUploaded': items_uploaded,
@@ -1029,15 +1038,13 @@ def upload_file(request, file: UploadedFile = File(...)):
             'totalItems': items_uploaded
         }
         upload.note = json.dumps(status_info)
-        upload.save(update_fields=['note'])
+        upload.status = 'queued'
+        upload.save(update_fields=['note', 'status'])
 
-        # Fire-and-forget background processing
-        threading.Thread(
-            target=_process_upload_in_background,
-            args=(upload.id,),
-            daemon=True,
-        ).start()
-        logger.info(f"Spawned background ingest thread for upload_id={upload.id}")
+        # Enqueue for background processing by single worker
+        from products.queue_worker import enqueue_upload
+        enqueue_upload(upload.id)
+        logger.info(f"Enqueued upload_id={upload.id} for background ingest")
 
         return {
             "success": True,
@@ -1048,7 +1055,7 @@ def upload_file(request, file: UploadedFile = File(...)):
             "marketplace": marketplace_name,
             "itemsUploaded": items_uploaded,
             "itemsAdded": 0,
-            "status": "processing",
+            "status": "queued",
             "errorLogs": "Processing"
         }
         
