@@ -17,6 +17,9 @@ const ProductMappingTable = () => {
   const [dragOver, setDragOver] = useState(false)
   const [selectedFile, setSelectedFile] = useState(null)
   
+  // Error details modal state
+  const [errorModal, setErrorModal] = useState({ isOpen: false, title: '', message: '' })
+
   // Export loading state
   const [isExporting, setIsExporting] = useState(false)
   
@@ -568,6 +571,15 @@ const ProductMappingTable = () => {
     }
   }
 
+  const openErrorModal = (row) => {
+    setErrorModal({
+      isOpen: true,
+      title: `Upload #${row.id} – Error`,
+      message: row.errorLogs || 'No details available.'
+    })
+  }
+  const closeErrorModal = () => setErrorModal({ isOpen: false, title: '', message: '' })
+
   return (
     <div className="container mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
@@ -671,9 +683,20 @@ const ProductMappingTable = () => {
                     </span>
                   </td>
                   <td className="py-3 px-4 text-sm">
-                    <div className="max-w-xs truncate" title={row.errorLogs}>
-                      {row.errorLogs}
-                    </div>
+                    {row.status === 'failed' && row.errorLogs && row.errorLogs !== 'No errors' ? (
+                      <button
+                        type="button"
+                        onClick={() => openErrorModal(row)}
+                        className="text-blue-600 hover:text-blue-800 underline"
+                        title="View error details"
+                      >
+                        View
+                      </button>
+                    ) : (
+                      <div className="max-w-xs truncate" title={row.errorLogs}>
+                        {row.errorLogs}
+                      </div>
+                    )}
                   </td>
                   <td className="py-3 px-4 text-center">
                     <button
@@ -1116,6 +1139,24 @@ const ProductMappingTable = () => {
                   </div>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Details Modal */}
+      {errorModal.isOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={closeErrorModal}>
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-lg bg-white" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">{errorModal.title}</h3>
+              <button onClick={closeErrorModal} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <div className="bg-gray-50 rounded p-4 max-h-96 overflow-auto">
+              <pre className="whitespace-pre-wrap text-sm text-gray-800">{errorModal.message}</pre>
+            </div>
+            <div className="mt-4 text-right">
+              <button onClick={closeErrorModal} className="px-4 py-2 bg-gray-800 text-white rounded">Close</button>
             </div>
           </div>
         </div>

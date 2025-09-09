@@ -889,6 +889,13 @@ def _process_upload_in_background(upload_id: int):
         # Use parallel ingestion for performance on large files
         processed_count = ingest_upload_parallel(upload_id, workers=4, batch_size=500)
 
+        if processed_count == 0:
+            # Normalize to a validation failure for frontend clarity
+            raise ValidationError(
+                "File processed but resulted in 0 items. Likely duplicates or invalid references. Nothing to create/update.",
+                "NO_ITEMS_PROCESSED"
+            )
+
         info.update({
             'status': 'completed',
             'itemsAdded': processed_count,
@@ -1173,7 +1180,8 @@ def get_uploads(request, page: int = 1, page_size: int = 10):
                 "itemsUploaded": items_uploaded,
                 "itemsAdded": items_added,
                 "status": status,
-                "errorLogs": error_logs
+                "errorLogs": error_logs,
+                "errorType": (stored_info.get('errorType') if stored_info else None)
             })
         
         # Calculate pagination metadata

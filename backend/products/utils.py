@@ -375,6 +375,12 @@ def ingest_upload_parallel(upload_id: int, workers: int = 4, batch_size: int = 5
         })
 
     total = len(items)
+    if total == 0:
+        # Nothing passed validation/mapping. Treat as a hard failure so UI shows 'failed'.
+        raise ValidationError(
+            "No valid rows to process. Verify Vendor, Marketplace, Store names and ensure Store+Vendor settings exist.",
+            "NO_VALID_ROWS"
+        )
     try:
         _write_progress(upload_id, 0, total)
     except Exception:
