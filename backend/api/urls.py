@@ -21,9 +21,12 @@ from django.urls import path
 from .api import api
 from django.urls import path, re_path
 from django.views.generic import TemplateView
+from .views_oauth import oauth2_start, oauth2_callback
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', api.urls),
+    path('rest/oauth2-credential/start', oauth2_start),
+    path('rest/oauth2-credential/callback', oauth2_callback),
     re_path(r"^.*$", TemplateView.as_view(template_name="index.html")),
 ]

@@ -139,3 +139,20 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000
+
+# Google API credentials & scopes
+GOOGLE_CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE")
+GOOGLE_CREDENTIALS_JSON_B64 = os.getenv("GOOGLE_CREDENTIALS_JSON_B64")
+GOOGLE_SCOPES = os.getenv(
+    "GOOGLE_SCOPES",
+    "https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/spreadsheets",
+).split(",")
+
+# Google OAuth 3LO (user-consent) settings
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")  # e.g., https://autoecom.wesolucions.com/rest/oauth2-credential/callback
+GOOGLE_OAUTH_FORCE_CONSENT = os.getenv("GOOGLE_OAUTH_FORCE_CONSENT", "True") == "True"
+
+# Single owner email for Drive/Sheets access
+GOOGLE_OAUTH_PRIMARY_EMAIL = os.getenv("GOOGLE_OAUTH_PRIMARY_EMAIL")

@@ -24,3 +24,23 @@ class VendorPrice(models.Model):
     def __str__(self):
         return f"Latest price for {self.product_id}"
 
+
+class GoogleOAuthCredential(models.Model):
+    user_email = models.CharField(max_length=255, db_index=True)
+    google_user_id = models.CharField(max_length=255, blank=True, default="")
+    access_token = models.TextField()
+    refresh_token = models.TextField(blank=True, default="")
+    token_uri = models.CharField(max_length=255, default="https://oauth2.googleapis.com/token")
+    client_id = models.CharField(max_length=255)
+    client_secret = models.CharField(max_length=255)
+    scopes = models.TextField()
+    expiry = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("user_email", "client_id")
+
+    def __str__(self) -> str:
+        return f"GoogleOAuthCredential<{self.user_email}>"
+
