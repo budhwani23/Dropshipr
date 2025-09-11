@@ -56,6 +56,7 @@ export default function PriceSettings({
         vendorId: vid,
         purchaseTax: "0",
         marketplaceFees: "0",
+        dontPayDiscountPercentage: "10",
         priceRanges: [{ from: "0", to: "MAX", margin: "0", minimumMargin: "0" }],
       }]));
     } else {
@@ -162,7 +163,7 @@ export default function PriceSettings({
                   <h3 className="font-semibold">{vendor?.name || `Vendor ${v.vendorId}`}</h3>
                   <Button variant="outline" onClick={() => removeVendor("price", v.vendorId)}>Remove</Button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Purchase Tax %</Label>
                     <Input value={v.purchaseTax} onChange={(e) => updateVendorField(v.vendorId, 'purchaseTax', e.target.value)} />
@@ -170,6 +171,10 @@ export default function PriceSettings({
                   <div className="space-y-2">
                     <Label>Marketplace Fees %</Label>
                     <Input value={v.marketplaceFees} onChange={(e) => updateVendorField(v.vendorId, 'marketplaceFees', e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Don't Pay Discount %</Label>
+                    <Input value={v.dontPayDiscountPercentage ?? "10"} onChange={(e) => updateVendorField(v.vendorId, 'dontPayDiscountPercentage', e.target.value)} />
                   </div>
                 </div>
                 <div className="space-y-2">

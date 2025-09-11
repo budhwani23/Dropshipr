@@ -18,6 +18,7 @@ class StorePriceSettingsPerVendorSchema(Schema):
     vendor_id: int
     purchase_tax_percentage: Decimal
     marketplace_fees_percentage: Decimal
+    dont_pay_discount_percentage: Optional[Decimal] = Decimal('10')
     price_ranges: List[PriceRangeSchema]
 
 class StoreInventorySettingsPerVendorSchema(Schema):

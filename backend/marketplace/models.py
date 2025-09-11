@@ -61,7 +61,12 @@ class StorePriceSettings(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    dont_pay_discount_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=10,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
+    )
     class Meta:
         unique_together = [('store', 'vendor')]
 

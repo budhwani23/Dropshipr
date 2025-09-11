@@ -86,6 +86,9 @@ export const transformStoreDataForAPI = (storeInfo, priceSettingsByVendor, inven
       vendor_id: v.vendorId,
       purchase_tax_percentage: parseFloat(v.purchaseTax) || 0,
       marketplace_fees_percentage: parseFloat(v.marketplaceFees) || 0,
+      dont_pay_discount_percentage: (v.dontPayDiscountPercentage !== undefined && v.dontPayDiscountPercentage !== null)
+        ? parseFloat(v.dontPayDiscountPercentage)
+        : 10,
       price_ranges: (v.priceRanges || []).map(range => ({
         from_value: parseFloat(range.from) || 0,
         to_value: range.to || "MAX",
@@ -122,6 +125,7 @@ export const transformStoreDataForFrontend = (apiStoreData) => {
       vendorId: s.vendor_id,
       purchaseTax: s.purchase_tax_percentage.toString(),
       marketplaceFees: s.marketplace_fees_percentage.toString(),
+      dontPayDiscountPercentage: (s.dont_pay_discount_percentage ?? 10).toString(),
       priceRanges: (s.price_ranges || []).map(range => ({
         from: range.from_value.toString(),
         to: range.to_value,
