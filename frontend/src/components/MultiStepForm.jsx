@@ -70,7 +70,10 @@ export default function CreateStoreForm() {
       setIsEditMode(true);
       setStoreId(id);
       if (editStoreInfo) setStoreInfo(editStoreInfo);
-      if (ps) setPriceSettingsByVendor(ps);
+      if (ps) setPriceSettingsByVendor(ps.map(v => ({
+        ...v,
+        dontPayDiscountPercentage: v.dontPayDiscountPercentage ?? "10",
+      })));
       if (is) setInventorySettingsByVendor(is);
     }
   }, [location.state]);
@@ -87,7 +90,7 @@ export default function CreateStoreForm() {
     if(!pricePendingVendor) { toast.error('Select a vendor'); return; }
     const vid = parseInt(pricePendingVendor);
     if (usedPriceVendors.has(vid)) { toast.error('Vendor already added'); return; }
-    setPriceSettingsByVendor(prev => ([...prev, { vendorId: vid, purchaseTax: "", marketplaceFees: "", priceRanges: [{ from: "0", to: "MAX", margin: "", minimumMargin: "" }] }]));
+    setPriceSettingsByVendor(prev => ([...prev, { vendorId: vid, purchaseTax: "", marketplaceFees: "", dontPayDiscountPercentage: "10", priceRanges: [{ from: "0", to: "MAX", margin: "", minimumMargin: "" }] }]));
     setPricePendingVendor("");
   };
   const removePriceVendor = (vendorId) => setPriceSettingsByVendor(prev=> prev.filter(v=> v.vendorId!==vendorId));
@@ -152,10 +155,10 @@ export default function CreateStoreForm() {
           const proceed = window.confirm('Target vendor already has Price Settings. Overwrite them?');
           if (!proceed) return prev;
           const updated = [...prev];
-          updated[existsIdx] = { ...updated[existsIdx], priceRanges: rangesCopy, ...(duplicateModal.copyFees ? { purchaseTax: source.purchaseTax||"", marketplaceFees: source.marketplaceFees||"" } : {}) };
+          updated[existsIdx] = { ...updated[existsIdx], priceRanges: rangesCopy, ...(duplicateModal.copyFees ? { purchaseTax: source.purchaseTax||"", marketplaceFees: source.marketplaceFees||"", dontPayDiscountPercentage: source.dontPayDiscountPercentage || "10" } : {}) };
           return updated;
         }
-        const newEntry = { vendorId: toId, purchaseTax: duplicateModal.copyFees ? (source.purchaseTax||"") : "", marketplaceFees: duplicateModal.copyFees ? (source.marketplaceFees||"") : "", priceRanges: rangesCopy };
+        const newEntry = { vendorId: toId, purchaseTax: duplicateModal.copyFees ? (source.purchaseTax||"") : "", marketplaceFees: duplicateModal.copyFees ? (source.marketplaceFees||"") : "", dontPayDiscountPercentage: duplicateModal.copyFees ? (source.dontPayDiscountPercentage || "10") : "10", priceRanges: rangesCopy };
         return [...prev, newEntry];
       });
       toast.success('Price settings duplicated');
@@ -297,7 +300,7 @@ export default function CreateStoreForm() {
                   <h3 className="font-medium">{vendors.find(x=>x.id===v.vendorId)?.name || `Vendor ${v.vendorId}`}</h3>
                   <Button variant="outline" onClick={() => removePriceVendor(v.vendorId)}>Remove</Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label>Purchase Tax (%)</Label>
                     <Input value={v.purchaseTax} onChange={(e)=> updatePriceVendorField(v.vendorId, 'purchaseTax', e.target.value)} placeholder="Enter purchase tax" />
@@ -305,6 +308,10 @@ export default function CreateStoreForm() {
                   <div className="space-y-2">
                     <Label>Marketplace Fees (%)</Label>
                     <Input value={v.marketplaceFees} onChange={(e)=> updatePriceVendorField(v.vendorId, 'marketplaceFees', e.target.value)} placeholder="Enter marketplace fees" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Don't Pay Discount (%)</Label>
+                    <Input value={v.dontPayDiscountPercentage ?? "10"} onChange={(e)=> updatePriceVendorField(v.vendorId, 'dontPayDiscountPercentage', e.target.value)} placeholder="10" />
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -428,7 +435,7 @@ export default function CreateStoreForm() {
               {duplicateModal.type==='price' && (
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={duplicateModal.copyFees} onChange={(e)=> setDuplicateModal(prev=> ({ ...prev, copyFees: e.target.checked }))} />
-                  Include tax & marketplace fees
+                  Include tax, marketplace fees & discount
                 </label>
               )}
             </div>
