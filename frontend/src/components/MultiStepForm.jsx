@@ -300,7 +300,7 @@ export default function CreateStoreForm() {
                   <h3 className="font-medium">{vendors.find(x=>x.id===v.vendorId)?.name || `Vendor ${v.vendorId}`}</h3>
                   <Button variant="outline" onClick={() => removePriceVendor(v.vendorId)}>Remove</Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label>Purchase Tax (%)</Label>
                     <Input value={v.purchaseTax} onChange={(e)=> updatePriceVendorField(v.vendorId, 'purchaseTax', e.target.value)} placeholder="Enter purchase tax" />
@@ -308,10 +308,6 @@ export default function CreateStoreForm() {
                   <div className="space-y-2">
                     <Label>Marketplace Fees (%)</Label>
                     <Input value={v.marketplaceFees} onChange={(e)=> updatePriceVendorField(v.vendorId, 'marketplaceFees', e.target.value)} placeholder="Enter marketplace fees" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Don't Pay Discount (%)</Label>
-                    <Input value={v.dontPayDiscountPercentage ?? "10"} onChange={(e)=> updatePriceVendorField(v.vendorId, 'dontPayDiscountPercentage', e.target.value)} placeholder="10" />
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -324,6 +320,7 @@ export default function CreateStoreForm() {
                           <TableHead>To</TableHead>
                           <TableHead>Margin (%)</TableHead>
                           <TableHead>Minimum Margin</TableHead>
+                          <TableHead>Don't Pay Discount (%)</TableHead>
                           <TableHead>Action</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -334,6 +331,7 @@ export default function CreateStoreForm() {
                             <TableCell className="p-0">{index===v.priceRanges.length-1 ? (<Input value="MAX" readOnly className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted" />) : (<Input type="text" value={range.to} onChange={(e)=> updatePriceRange(v.vendorId, index, 'to', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="100" />)}</TableCell>
                             <TableCell className="p-0"><Input type="text" value={range.margin} onChange={(e)=> updatePriceRange(v.vendorId, index, 'margin', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="30" /></TableCell>
                             <TableCell className="p-0"><Input type="text" value={range.minimumMargin} onChange={(e)=> updatePriceRange(v.vendorId, index, 'minimumMargin', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="25" /></TableCell>
+                            <TableCell className="p-0"><Input type="text" value={v.dontPayDiscountPercentage ?? "10"} onChange={(e)=> updatePriceVendorField(v.vendorId, 'dontPayDiscountPercentage', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="10" /></TableCell>
                             <TableCell className="p-0"><div className="flex gap-2">{v.priceRanges.length>1 && (<Button onClick={()=> removePriceRangeRow(v.vendorId, index)} variant="ghost" className="p-2"><Trash2 className="w-4 h-4 text-red-500" /></Button>)}{index===v.priceRanges.length-1 && (<Button onClick={()=> addPriceRange(v.vendorId)} variant="ghost" className="p-2"><Plus className="w-4 h-4" /></Button>)}</div></TableCell>
                           </TableRow>
                         ))}
