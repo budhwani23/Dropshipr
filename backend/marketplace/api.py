@@ -54,7 +54,6 @@ def create_store(request, payload: StoreCreateSchema):
             vendor_id=settings_by_vendor.vendor_id,
             purchase_tax_percentage=settings_by_vendor.purchase_tax_percentage,
             marketplace_fees_percentage=settings_by_vendor.marketplace_fees_percentage,
-            dont_pay_discount_percentage=(settings_by_vendor.dont_pay_discount_percentage or Decimal('10')),
         )
         for pr in settings_by_vendor.price_ranges:
             price_range, _ = PriceRange.objects.get_or_create(
@@ -65,7 +64,8 @@ def create_store(request, payload: StoreCreateSchema):
                 price_settings=sps,
                 price_range=price_range,
                 margin_percentage=pr.margin_percentage or Decimal('0'),
-                minimum_margin_cents=pr.minimum_margin_cents or 0
+                minimum_margin_cents=pr.minimum_margin_cents or 0,
+                dont_pay_discount_percentage=(pr.dont_pay_discount_percentage or Decimal('10')),
             )
 
     # Create inventory settings per vendor
@@ -109,7 +109,6 @@ def duplicate_store(request, store_id: int, payload: StoreDuplicateSchema):
             vendor_id=sps.vendor_id,
             purchase_tax_percentage=sps.purchase_tax_percentage,
             marketplace_fees_percentage=sps.marketplace_fees_percentage,
-            dont_pay_discount_percentage=sps.dont_pay_discount_percentage,
         )
         for margin in sps.price_ranges.all():
             PriceRangeMargin.objects.create(
@@ -117,6 +116,7 @@ def duplicate_store(request, store_id: int, payload: StoreDuplicateSchema):
                 price_range=margin.price_range,
                 margin_percentage=margin.margin_percentage,
                 minimum_margin_cents=margin.minimum_margin_cents,
+                dont_pay_discount_percentage=margin.dont_pay_discount_percentage,
             )
 
     # Copy inventory settings
@@ -161,7 +161,6 @@ def update_store(request, store_id: int, payload: StoreCreateSchema):
             vendor_id=settings_by_vendor.vendor_id,
             purchase_tax_percentage=settings_by_vendor.purchase_tax_percentage,
             marketplace_fees_percentage=settings_by_vendor.marketplace_fees_percentage,
-            dont_pay_discount_percentage=(settings_by_vendor.dont_pay_discount_percentage or Decimal('10')),
         )
         for pr in settings_by_vendor.price_ranges:
             price_range, _ = PriceRange.objects.get_or_create(
@@ -172,7 +171,8 @@ def update_store(request, store_id: int, payload: StoreCreateSchema):
                 price_settings=sps,
                 price_range=price_range,
                 margin_percentage=pr.margin_percentage or Decimal('0'),
-                minimum_margin_cents=pr.minimum_margin_cents or 0
+                minimum_margin_cents=pr.minimum_margin_cents or 0,
+                dont_pay_discount_percentage=(pr.dont_pay_discount_percentage or Decimal('10')),
             )
 
     # Replace inventory settings for vendors provided in payload
@@ -254,13 +254,13 @@ def get_store_response(store):
                 "from_value": margin.price_range.from_value,
                 "to_value": margin.price_range.to_value,
                 "margin_percentage": margin.margin_percentage,
-                "minimum_margin_cents": margin.minimum_margin_cents
+                "minimum_margin_cents": margin.minimum_margin_cents,
+                "dont_pay_discount_percentage": margin.dont_pay_discount_percentage,
             })
         price_settings_by_vendor.append({
             "vendor_id": sps.vendor_id,
             "purchase_tax_percentage": sps.purchase_tax_percentage,
             "marketplace_fees_percentage": sps.marketplace_fees_percentage,
-            "dont_pay_discount_percentage": sps.dont_pay_discount_percentage,
             "price_ranges": price_ranges,
         })
 

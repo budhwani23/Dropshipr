@@ -86,14 +86,14 @@ export const transformStoreDataForAPI = (storeInfo, priceSettingsByVendor, inven
       vendor_id: v.vendorId,
       purchase_tax_percentage: parseFloat(v.purchaseTax) || 0,
       marketplace_fees_percentage: parseFloat(v.marketplaceFees) || 0,
-      dont_pay_discount_percentage: (v.dontPayDiscountPercentage !== undefined && v.dontPayDiscountPercentage !== null)
-        ? parseFloat(v.dontPayDiscountPercentage)
-        : 10,
       price_ranges: (v.priceRanges || []).map(range => ({
         from_value: parseFloat(range.from) || 0,
         to_value: range.to || "MAX",
         margin_percentage: parseFloat(range.margin) || 0,
-        minimum_margin_cents: ((parseInt(range.minimumMargin) || 0) * 100)
+        minimum_margin_cents: ((parseInt(range.minimumMargin) || 0) * 100),
+        dont_pay_discount_percentage: (range.dontPayDiscountPercentage !== undefined && range.dontPayDiscountPercentage !== null)
+          ? parseFloat(range.dontPayDiscountPercentage)
+          : 10,
       }))
     })),
     inventory_settings_by_vendor: (inventorySettingsByVendor || []).map(v => ({
@@ -125,12 +125,12 @@ export const transformStoreDataForFrontend = (apiStoreData) => {
       vendorId: s.vendor_id,
       purchaseTax: s.purchase_tax_percentage.toString(),
       marketplaceFees: s.marketplace_fees_percentage.toString(),
-      dontPayDiscountPercentage: (s.dont_pay_discount_percentage ?? 10).toString(),
       priceRanges: (s.price_ranges || []).map(range => ({
         from: range.from_value.toString(),
         to: range.to_value,
         margin: range.margin_percentage.toString(),
-        minimumMargin: ((range.minimum_margin_cents || 0) / 100).toString()
+        minimumMargin: ((range.minimum_margin_cents || 0) / 100).toString(),
+        dontPayDiscountPercentage: (range.dont_pay_discount_percentage ?? 10).toString(),
       }))
     })),
     inventorySettingsByVendor: (apiStoreData.inventory_settings_by_vendor || []).map(s => ({

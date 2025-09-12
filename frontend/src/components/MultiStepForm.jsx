@@ -72,7 +72,10 @@ export default function CreateStoreForm() {
       if (editStoreInfo) setStoreInfo(editStoreInfo);
       if (ps) setPriceSettingsByVendor(ps.map(v => ({
         ...v,
-        dontPayDiscountPercentage: v.dontPayDiscountPercentage ?? "10",
+        priceRanges: (v.priceRanges||[]).map(r => ({
+          ...r,
+          dontPayDiscountPercentage: r.dontPayDiscountPercentage ?? "10",
+        })),
       })));
       if (is) setInventorySettingsByVendor(is);
     }
@@ -90,18 +93,18 @@ export default function CreateStoreForm() {
     if(!pricePendingVendor) { toast.error('Select a vendor'); return; }
     const vid = parseInt(pricePendingVendor);
     if (usedPriceVendors.has(vid)) { toast.error('Vendor already added'); return; }
-    setPriceSettingsByVendor(prev => ([...prev, { vendorId: vid, purchaseTax: "", marketplaceFees: "", dontPayDiscountPercentage: "10", priceRanges: [{ from: "0", to: "MAX", margin: "", minimumMargin: "" }] }]));
+    setPriceSettingsByVendor(prev => ([...prev, { vendorId: vid, purchaseTax: "", marketplaceFees: "", priceRanges: [{ from: "0", to: "MAX", margin: "", minimumMargin: "", dontPayDiscountPercentage: "10" }] }]));
     setPricePendingVendor("");
   };
   const removePriceVendor = (vendorId) => setPriceSettingsByVendor(prev=> prev.filter(v=> v.vendorId!==vendorId));
   const updatePriceVendorField = (vendorId, field, value) => setPriceSettingsByVendor(prev => prev.map(v=> v.vendorId===vendorId ? { ...v, [field]: value.replace(/[^0-9.]/g, "") } : v));
-  const addPriceRange = (vendorId) => setPriceSettingsByVendor(prev => prev.map(v=>{ if(v.vendorId!==vendorId) return v; const ranges=[...v.priceRanges]; const last= ranges[ranges.length-1]; const from = last.from || "0"; const to = (parseFloat(from||0)+100).toString(); ranges[ranges.length-1] = { ...last, to }; ranges.push({ from: to, to: "MAX", margin: "", minimumMargin: ""}); return { ...v, priceRanges: ranges }; }));
+  const addPriceRange = (vendorId) => setPriceSettingsByVendor(prev => prev.map(v=>{ if(v.vendorId!==vendorId) return v; const ranges=[...v.priceRanges]; const last= ranges[ranges.length-1]; const from = last.from || "0"; const to = (parseFloat(from||0)+100).toString(); ranges[ranges.length-1] = { ...last, to }; ranges.push({ from: to, to: "MAX", margin: "", minimumMargin: "", dontPayDiscountPercentage: last.dontPayDiscountPercentage || "10"}); return { ...v, priceRanges: ranges }; }));
   const updatePriceRange = (vendorId, idx, field, value) => setPriceSettingsByVendor(prev => prev.map(v=> v.vendorId===vendorId ? { ...v, priceRanges: v.priceRanges.map((r,i)=> i===idx ? { ...r, [field]: field==='to'? value.replace(/[^0-9.]/g, ""): value.replace(/[^0-9.]/g, "") } : r) } : v));
   const removePriceRangeRow = (vendorId, idx) => setPriceSettingsByVendor(prev => prev.map(v => {
     if (v.vendorId !== vendorId) return v;
     let ranges = v.priceRanges.filter((_, i) => i !== idx);
     if (!ranges.length) {
-      ranges = [{ from: "0", to: "MAX", margin: "", minimumMargin: "" }];
+      ranges = [{ from: "0", to: "MAX", margin: "", minimumMargin: "", dontPayDiscountPercentage: "10" }];
     } else {
       ranges[ranges.length - 1] = { ...ranges[ranges.length - 1], to: "MAX" };
     }
@@ -148,17 +151,17 @@ export default function CreateStoreForm() {
     if (duplicateModal.type === 'price') {
       const source = priceSettingsByVendor.find(v=> v.vendorId===fromId);
       if (!source) { toast.error('Source vendor not found in Price Settings'); return; }
-      const rangesCopy = (source.priceRanges||[]).map(r=> ({ from: String(r.from||"0"), to: String((r.to||"MAX")).toUpperCase()==='MAX'? 'MAX' : String(r.to), margin: String(r.margin||""), minimumMargin: String(r.minimumMargin||"") }));
+      const rangesCopy = (source.priceRanges||[]).map(r=> ({ from: String(r.from||"0"), to: String((r.to||"MAX")).toUpperCase()==='MAX'? 'MAX' : String(r.to), margin: String(r.margin||""), minimumMargin: String(r.minimumMargin||""), dontPayDiscountPercentage: String(r.dontPayDiscountPercentage||"10") }));
       setPriceSettingsByVendor(prev => {
         const existsIdx = prev.findIndex(v=> v.vendorId===toId);
         if (existsIdx !== -1) {
           const proceed = window.confirm('Target vendor already has Price Settings. Overwrite them?');
           if (!proceed) return prev;
           const updated = [...prev];
-          updated[existsIdx] = { ...updated[existsIdx], priceRanges: rangesCopy, ...(duplicateModal.copyFees ? { purchaseTax: source.purchaseTax||"", marketplaceFees: source.marketplaceFees||"", dontPayDiscountPercentage: source.dontPayDiscountPercentage || "10" } : {}) };
+          updated[existsIdx] = { ...updated[existsIdx], priceRanges: rangesCopy, ...(duplicateModal.copyFees ? { purchaseTax: source.purchaseTax||"", marketplaceFees: source.marketplaceFees||"" } : {}) };
           return updated;
         }
-        const newEntry = { vendorId: toId, purchaseTax: duplicateModal.copyFees ? (source.purchaseTax||"") : "", marketplaceFees: duplicateModal.copyFees ? (source.marketplaceFees||"") : "", dontPayDiscountPercentage: duplicateModal.copyFees ? (source.dontPayDiscountPercentage || "10") : "10", priceRanges: rangesCopy };
+        const newEntry = { vendorId: toId, purchaseTax: duplicateModal.copyFees ? (source.purchaseTax||"") : "", marketplaceFees: duplicateModal.copyFees ? (source.marketplaceFees||"") : "", priceRanges: rangesCopy };
         return [...prev, newEntry];
       });
       toast.success('Price settings duplicated');
@@ -331,7 +334,7 @@ export default function CreateStoreForm() {
                             <TableCell className="p-0">{index===v.priceRanges.length-1 ? (<Input value="MAX" readOnly className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted" />) : (<Input type="text" value={range.to} onChange={(e)=> updatePriceRange(v.vendorId, index, 'to', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="100" />)}</TableCell>
                             <TableCell className="p-0"><Input type="text" value={range.margin} onChange={(e)=> updatePriceRange(v.vendorId, index, 'margin', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="30" /></TableCell>
                             <TableCell className="p-0"><Input type="text" value={range.minimumMargin} onChange={(e)=> updatePriceRange(v.vendorId, index, 'minimumMargin', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="25" /></TableCell>
-                            <TableCell className="p-0"><Input type="text" value={v.dontPayDiscountPercentage ?? "10"} onChange={(e)=> updatePriceVendorField(v.vendorId, 'dontPayDiscountPercentage', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="10" /></TableCell>
+                            <TableCell className="p-0"><Input type="text" value={range.dontPayDiscountPercentage ?? "10"} onChange={(e)=> updatePriceRange(v.vendorId, index, 'dontPayDiscountPercentage', e.target.value)} className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0" placeholder="10" /></TableCell>
                             <TableCell className="p-0"><div className="flex gap-2">{v.priceRanges.length>1 && (<Button onClick={()=> removePriceRangeRow(v.vendorId, index)} variant="ghost" className="p-2"><Trash2 className="w-4 h-4 text-red-500" /></Button>)}{index===v.priceRanges.length-1 && (<Button onClick={()=> addPriceRange(v.vendorId)} variant="ghost" className="p-2"><Plus className="w-4 h-4" /></Button>)}</div></TableCell>
                           </TableRow>
                         ))}
@@ -433,7 +436,7 @@ export default function CreateStoreForm() {
               {duplicateModal.type==='price' && (
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={duplicateModal.copyFees} onChange={(e)=> setDuplicateModal(prev=> ({ ...prev, copyFees: e.target.checked }))} />
-                  Include tax, marketplace fees & discount
+                  Include tax & marketplace fees
                 </label>
               )}
             </div>
