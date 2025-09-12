@@ -1,5 +1,5 @@
 from ninja import Schema
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from decimal import Decimal
 
 class MarketplaceSchema(Schema):
@@ -25,12 +25,17 @@ class StoreInventorySettingsPerVendorSchema(Schema):
     vendor_id: int
     inventory_ranges: List[PriceRangeSchema]
 
+class MyDealSettingsSchema(Schema):
+    price_template_upload_id: Optional[int] = None
+    inventory_template_upload_id: Optional[int] = None
+
 class StoreCreateSchema(Schema):
     name: str
     marketplace_id: int
     api_key_enc: Optional[str] = None
     price_settings_by_vendor: List[StorePriceSettingsPerVendorSchema]
     inventory_settings_by_vendor: List[StoreInventorySettingsPerVendorSchema]
+    settings: Optional[Dict[str, Any]] = None
 
 class StoreDuplicateSchema(Schema):
     name: str
@@ -46,6 +51,7 @@ class StoreResponseSchema(Schema):
     created_at: str
     price_settings_by_vendor: List[StorePriceSettingsPerVendorSchema]
     inventory_settings_by_vendor: List[StoreInventorySettingsPerVendorSchema]
+    settings: Optional[Dict[str, Any]] = None
 
 class StoreActiveSchema(Schema):
     is_active: bool 

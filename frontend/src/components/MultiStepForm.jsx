@@ -45,6 +45,16 @@ export default function CreateStoreForm() {
     apiKey: "",
   });
 
+  // MyDeal uploads state
+  const [mydealState, setMydealState] = useState({
+    priceTemplateUploadId: null,
+    inventoryTemplateUploadId: null,
+    priceUploading: false,
+    inventoryUploading: false,
+    priceFileName: "",
+    inventoryFileName: "",
+  });
+
   // Vendor-scoped arrays
   const [priceSettingsByVendor, setPriceSettingsByVendor] = useState([]);
   const [inventorySettingsByVendor, setInventorySettingsByVendor] = useState([]);
@@ -66,7 +76,7 @@ export default function CreateStoreForm() {
   // Check if we're in edit mode
   useEffect(() => {
     if (location.state && location.state.storeData) {
-      const { id, storeInfo: editStoreInfo, priceSettingsByVendor: ps, inventorySettingsByVendor: is } = location.state.storeData;
+      const { id, storeInfo: editStoreInfo, priceSettingsByVendor: ps, inventorySettingsByVendor: is, mydealSettings } = location.state.storeData;
       setIsEditMode(true);
       setStoreId(id);
       if (editStoreInfo) setStoreInfo(editStoreInfo);
@@ -78,12 +88,45 @@ export default function CreateStoreForm() {
         })),
       })));
       if (is) setInventorySettingsByVendor(is);
+      if (mydealSettings) setMydealState(prev => ({ ...prev, priceTemplateUploadId: mydealSettings.priceTemplateUploadId || null, inventoryTemplateUploadId: mydealSettings.inventoryTemplateUploadId || null }));
     }
   }, [location.state]);
+
+  // Derived marketplace code/name to help decisions
+  const selectedMarketplace = useMemo(() => marketplaces.find(m => String(m.id) === String(storeInfo.marketplace)) || null, [marketplaces, storeInfo.marketplace]);
+  const isMyDeal = selectedMarketplace && (selectedMarketplace.code === 'MyDeal' || selectedMarketplace.name === 'MyDeal');
 
   // Store Info Handlers
   const updateStoreInfo = (field, value) => {
     setStoreInfo((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // MyDeal uploads
+  const handleUploadMyDealPrice = async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    try {
+      setMydealState(prev => ({ ...prev, priceUploading: true }));
+      const res = await marketplaceAPI.uploadMyDealPriceTemplate(file);
+      setMydealState(prev => ({ ...prev, priceTemplateUploadId: res.upload_id, priceUploading: false, priceFileName: res.original_name }));
+      toast.success('Price template validated and uploaded');
+    } catch (e) {
+      setMydealState(prev => ({ ...prev, priceUploading: false }));
+      toast.error(e.message || 'Failed to upload price template');
+    }
+  };
+  const handleUploadMyDealInventory = async (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    try {
+      setMydealState(prev => ({ ...prev, inventoryUploading: true }));
+      const res = await marketplaceAPI.uploadMyDealInventoryTemplate(file);
+      setMydealState(prev => ({ ...prev, inventoryTemplateUploadId: res.upload_id, inventoryUploading: false, inventoryFileName: res.original_name }));
+      toast.success('Inventory template validated and uploaded');
+    } catch (e) {
+      setMydealState(prev => ({ ...prev, inventoryUploading: false }));
+      toast.error(e.message || 'Failed to upload inventory template');
+    }
   };
 
   // Price tab vendor helpers
@@ -194,6 +237,12 @@ export default function CreateStoreForm() {
   const goToNextStep = () => {
     if (activeStep === "store-info") {
       if (!storeInfo.storeName || !storeInfo.marketplace) { toast.error("Please fill in all required fields"); return; }
+      if (isMyDeal) {
+        if (!mydealState.priceTemplateUploadId || !mydealState.inventoryTemplateUploadId) {
+          toast.error('Please upload both MyDeal templates');
+          return;
+        }
+      }
       setActiveStep("price-settings");
     } else if (activeStep === "price-settings") {
       // Validate contiguous price ranges per vendor
@@ -215,7 +264,7 @@ export default function CreateStoreForm() {
       setLoading(true);
       // Validate contiguous inventory ranges per vendor
       for (const v of inventorySettingsByVendor) { if (!rangesAreContiguous(v.priceRanges)) { toast.error('Inventory ranges must be contiguous and end with MAX'); return; } }
-      const storeData = transformStoreDataForAPI(storeInfo, priceSettingsByVendor, inventorySettingsByVendor);
+      const storeData = transformStoreDataForAPI({ ...storeInfo, marketplaceName: selectedMarketplace?.name, marketplaceCode: selectedMarketplace?.code }, priceSettingsByVendor, inventorySettingsByVendor, isMyDeal ? mydealState : undefined);
       if (isEditMode && storeId !== null) {
         await marketplaceAPI.updateStore(storeId, storeData);
         toast.success("Store updated successfully");
@@ -275,6 +324,25 @@ export default function CreateStoreForm() {
                 <Input id="apiKey" type="password" placeholder="Enter your marketplace API key" value={storeInfo.apiKey} onChange={(e) => updateStoreInfo("apiKey", e.target.value)} />
                 <p className="text-sm text-gray-500">Your API key will be encrypted and stored securely</p>
               </div>
+
+              {isMyDeal && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>MyDeal Price Template (required)</Label>
+                    <Input type="file" accept=".csv,.xlsx,.xls" onChange={handleUploadMyDealPrice} disabled={mydealState.priceUploading} />
+                    {mydealState.priceUploading && (<p className="text-sm text-gray-500 mt-1">Uploading...</p>)}
+                    {mydealState.priceTemplateUploadId && (<p className="text-sm text-green-600 mt-1">Uploaded: {mydealState.priceFileName || 'Price template'}</p>)}
+                    <p className="text-xs text-gray-500 mt-1">Headers must be exactly: DealID, VariantID, ExternalID, SKU, Options, DealTitle, Price(IncGST), RRP(IncGST)</p>
+                  </div>
+                  <div>
+                    <Label>MyDeal Inventory Template (required)</Label>
+                    <Input type="file" accept=".csv,.xlsx,.xls" onChange={handleUploadMyDealInventory} disabled={mydealState.inventoryUploading} />
+                    {mydealState.inventoryUploading && (<p className="text-sm text-gray-500 mt-1">Uploading...</p>)}
+                    {mydealState.inventoryTemplateUploadId && (<p className="text-sm text-green-600 mt-1">Uploaded: {mydealState.inventoryFileName || 'Inventory template'}</p>)}
+                    <p className="text-xs text-gray-500 mt-1">Headers must be exactly: DealID, VariantID, ExternalID, SKU, Options, DealTitle, StockOnHand, Discontinued, MyDealApproved</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-4">

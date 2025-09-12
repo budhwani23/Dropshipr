@@ -5,6 +5,12 @@ from django.db import transaction
 from typing import List, Optional
 from decimal import Decimal
 import json
+import os
+import uuid
+from datetime import timedelta
+from django.utils import timezone
+from django.core.files.uploadedfile import UploadedFile
+from ninja.files import File
 
 from .models import (
     Marketplace, Store, StorePriceSettings, StoreInventorySettings,
@@ -15,6 +21,7 @@ from .schema import (
     MarketplaceSchema, PriceRangeSchema, StorePriceSettingsPerVendorSchema,
     StoreInventorySettingsPerVendorSchema, StoreCreateSchema, StoreResponseSchema, StoreActiveSchema, StoreDuplicateSchema
 )
+from .mydeal_templates import validate_price_template, validate_inventory_template
 
 # Create API instance
 router = Router()
@@ -44,8 +51,15 @@ def create_store(request, payload: StoreCreateSchema):
     store = Store.objects.create(
         name=payload.name,
         marketplace=marketplace,
-        api_key_enc=payload.api_key_enc or ""
+        api_key_enc=payload.api_key_enc or "",
+        settings=payload.settings or {},
     )
+
+    # Conditional MyDeal validation on create (require both templates if marketplace is MyDeal)
+    if marketplace.code == "MyDeal":
+        mydeal = (store.settings or {}).get("mydeal") or {}
+        if not mydeal.get("price_template_upload_id") or not mydeal.get("inventory_template_upload_id"):
+            raise HttpError(400, "MyDeal requires both price and inventory templates")
 
     # Create price settings per vendor
     for settings_by_vendor in payload.price_settings_by_vendor:
@@ -95,11 +109,13 @@ def duplicate_store(request, store_id: int, payload: StoreDuplicateSchema):
     marketplace = get_object_or_404(Marketplace, id=payload.marketplace_id)
 
     # Create new store
+    new_sps_settings = source.settings.copy() if isinstance(source.settings, dict) else {}
     new_store = Store.objects.create(
         name=payload.name,
         marketplace=marketplace,
         api_key_enc=payload.api_key_enc or source.api_key_enc or "",
         is_active=True,
+        settings=new_sps_settings,
     )
 
     # Copy price settings
@@ -151,6 +167,12 @@ def update_store(request, store_id: int, payload: StoreCreateSchema):
     store.name = payload.name
     store.marketplace = marketplace
     store.api_key_enc = payload.api_key_enc or ""
+    # Merge settings so we don't drop existing keys unintentionally
+    incoming_settings = payload.settings or {}
+    merged = (store.settings or {}).copy()
+    for k, v in incoming_settings.items():
+        merged[k] = v
+    store.settings = merged
     store.save()
 
     # Replace price settings for vendors provided in payload
@@ -291,4 +313,94 @@ def get_store_response(store):
         "created_at": store.created_at.isoformat(),
         "price_settings_by_vendor": price_settings_by_vendor,
         "inventory_settings_by_vendor": inventory_settings_by_vendor,
+        "settings": store.settings or {},
     }
+
+# ========== MyDeal template uploads ==========
+
+@router.post("/mydeal/templates/price")
+def upload_mydeal_price_template(request, file: UploadedFile = File(...)):
+    try:
+        # Validate extension
+        allowed_extensions = ['.csv', '.xlsx', '.xls']
+        ext = os.path.splitext(file.name)[1].lower()
+        if ext not in allowed_extensions:
+            raise HttpError(400, "Invalid file type. Please upload CSV or Excel files only.")
+
+        # Save file
+        unique_name = f"{uuid.uuid4()}{ext}"
+        uploads_dir = os.path.join("uploads")
+        os.makedirs(uploads_dir, exist_ok=True)
+        path = os.path.join(uploads_dir, unique_name)
+        with open(path, "wb") as f:
+            for chunk in file.chunks():
+                f.write(chunk)
+
+        # Validate headers
+        ok, message = validate_price_template(path)
+        if not ok:
+            # Remove bad file
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+            raise HttpError(400, f"Invalid price template: {message}")
+
+        # Create Upload record for traceability
+        from products.models import Upload
+        upload_rec = Upload.objects.create(
+            original_name=file.name,
+            stored_key=path,
+            note=json.dumps({"type": "mydeal_price_template"}),
+            expires_at=timezone.now() + timedelta(days=30),
+            status="uploaded"
+        )
+        return {"upload_id": upload_rec.id, "original_name": file.name, "validated": True}
+    except HttpError:
+        raise
+    except Exception as e:
+        raise HttpError(500, f"Upload failed: {str(e)}")
+
+
+@router.post("/mydeal/templates/inventory")
+def upload_mydeal_inventory_template(request, file: UploadedFile = File(...)):
+    try:
+        # Validate extension
+        allowed_extensions = ['.csv', '.xlsx', '.xls']
+        ext = os.path.splitext(file.name)[1].lower()
+        if ext not in allowed_extensions:
+            raise HttpError(400, "Invalid file type. Please upload CSV or Excel files only.")
+
+        # Save file
+        unique_name = f"{uuid.uuid4()}{ext}"
+        uploads_dir = os.path.join("uploads")
+        os.makedirs(uploads_dir, exist_ok=True)
+        path = os.path.join(uploads_dir, unique_name)
+        with open(path, "wb") as f:
+            for chunk in file.chunks():
+                f.write(chunk)
+
+        # Validate headers
+        ok, message = validate_inventory_template(path)
+        if not ok:
+            # Remove bad file
+            try:
+                os.remove(path)
+            except Exception:
+                pass
+            raise HttpError(400, f"Invalid inventory template: {message}")
+
+        # Create Upload record for traceability
+        from products.models import Upload
+        upload_rec = Upload.objects.create(
+            original_name=file.name,
+            stored_key=path,
+            note=json.dumps({"type": "mydeal_inventory_template"}),
+            expires_at=timezone.now() + timedelta(days=30),
+            status="uploaded"
+        )
+        return {"upload_id": upload_rec.id, "original_name": file.name, "validated": True}
+    except HttpError:
+        raise
+    except Exception as e:
+        raise HttpError(500, f"Upload failed: {str(e)}")
