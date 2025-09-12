@@ -10,7 +10,7 @@ import uuid
 from datetime import timedelta
 from django.utils import timezone
 from django.core.files.uploadedfile import UploadedFile
-from ninja.files import File
+from ninja import File
 
 from .models import (
     Marketplace, Store, StorePriceSettings, StoreInventorySettings,
