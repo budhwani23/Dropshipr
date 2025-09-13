@@ -120,6 +120,12 @@ export const dashboardAPI = {
   }
 };
 
+export const exportAPI = {
+  generateMyDeal: (storeId, kind) => apiCall(`/export/mydeal/${storeId}/generate?kind=${encodeURIComponent(kind)}`, { method: 'POST' }),
+  getLatest: (storeId, kind) => apiCall(`/export/mydeal/${storeId}/latest?kind=${encodeURIComponent(kind)}`),
+  downloadLatestUrl: (storeId, kind) => `${API_BASE_URL}/export/mydeal/${storeId}/latest/download?kind=${encodeURIComponent(kind)}`,
+};
+
 // Helper function to transform frontend data to API format (vendor arrays)
 export const transformStoreDataForAPI = (storeInfo, priceSettingsByVendor, inventorySettingsByVendor, mydealSettingsState) => {
   const payload = {

@@ -6,6 +6,7 @@ from datetime import timedelta
 from marketplace.models import Store, Marketplace
 from products.models import Product, Upload
 from vendor.models import Vendor, VendorPrice
+from export.models import ExportArtifact
 
 router = Router()
 
@@ -82,6 +83,18 @@ def dashboard_stores(request, marketplace_id: int | None = None):
                    .annotate(last=Max('scraped_at')))
     store_to_last = {x['product__store_id']: x['last'] for x in last_scrape}
 
+    # Last export timestamps
+    last_price = (ExportArtifact.objects
+                  .filter(store__in=stores, kind=ExportArtifact.KIND_PRICE, status=ExportArtifact.STATUS_READY)
+                  .values('store_id')
+                  .annotate(last=Max('generated_at')))
+    last_inventory = (ExportArtifact.objects
+                      .filter(store__in=stores, kind=ExportArtifact.KIND_INVENTORY, status=ExportArtifact.STATUS_READY)
+                      .values('store_id')
+                      .annotate(last=Max('generated_at')))
+    store_to_last_price = {x['store_id']: x['last'] for x in last_price}
+    store_to_last_inventory = {x['store_id']: x['last'] for x in last_inventory}
+
     data = []
     for s in stores:
         counts = store_to_counts.get(s.id, {"products": 0, "vendors": 0})
@@ -103,6 +116,8 @@ def dashboard_stores(request, marketplace_id: int | None = None):
             "scrapingEnabled": s.scraping_enabled,
             "priceUpdateEnabled": s.price_update_enabled,
             "lastScrapeAt": store_to_last.get(s.id),
+            "lastExportPriceAt": store_to_last_price.get(s.id),
+            "lastExportInventoryAt": store_to_last_inventory.get(s.id),
             "products": counts.get('products', 0),
             "vendors": counts.get('vendors', 0),
             "myDealTemplatesOk": mydeal_ok,

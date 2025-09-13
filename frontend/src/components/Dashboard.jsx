@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
-import { dashboardAPI, marketplaceAPI } from "../services/api";
-import { Package, Store as StoreIcon, Users, AlertTriangle, Upload, RefreshCw } from "lucide-react";
+import { dashboardAPI, marketplaceAPI, exportAPI } from "../services/api";
+import { Package, Store as StoreIcon, Users, AlertTriangle, Upload, RefreshCw, Download } from "lucide-react";
 
 const ALL_VALUE = "__ALL__";
 
@@ -104,14 +104,26 @@ export default function Dashboard() {
                 <span className="text-xs bg-white/20 rounded px-2 py-0.5">{s.marketplace.code}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-4 space-y-2">
+            <CardContent className="p-4 space-y-3">
               <div className="flex items-center justify-between"><span className="text-sm text-gray-600">Products</span><span className="font-semibold">{s.products}</span></div>
               <div className="flex items-center justify-between"><span className="text-sm text-gray-600">Vendors</span><span className="font-semibold">{s.vendors}</span></div>
               <div className="flex items-center justify-between"><span className="text-sm text-gray-600">Last scrape</span><span className="font-semibold">{s.lastScrapeAt ? new Date(s.lastScrapeAt).toLocaleString() : '—'}</span></div>
               <div className="flex items-center justify-between text-sm"><span className="text-gray-600">Scraping</span><span className={s.scrapingEnabled ? 'text-green-600' : 'text-gray-500'}>{s.scrapingEnabled ? 'Enabled' : 'Disabled'}</span></div>
               <div className="flex items-center justify-between text-sm"><span className="text-gray-600">Price updates</span><span className={s.priceUpdateEnabled ? 'text-green-600' : 'text-gray-500'}>{s.priceUpdateEnabled ? 'Enabled' : 'Disabled'}</span></div>
               {String(s.marketplace.code || '').toLowerCase() === 'mydeal' && (
-                <div className="flex items-center justify-between text-sm"><span className="text-gray-600">MyDeal templates</span><span className={s.myDealTemplatesOk ? 'text-green-600' : 'text-red-600'}>{s.myDealTemplatesOk ? 'OK' : 'Missing'}</span></div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm"><span className="text-gray-600">MyDeal templates</span><span className={s.myDealTemplatesOk ? 'text-green-600' : 'text-red-600'}>{s.myDealTemplatesOk ? 'OK' : 'Missing'}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span className="text-gray-600">Last Price Export</span><span className="font-semibold">{s.lastExportPriceAt ? new Date(s.lastExportPriceAt).toLocaleString() : '—'}</span></div>
+                  <div className="flex items-center justify-between text-sm"><span className="text-gray-600">Last Inventory Export</span><span className="font-semibold">{s.lastExportInventoryAt ? new Date(s.lastExportInventoryAt).toLocaleString() : '—'}</span></div>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" size="sm" disabled={!s.lastExportPriceAt} onClick={() => window.open(exportAPI.downloadLatestUrl(s.storeId, 'price'), '_blank')}>
+                      <Download className="w-4 h-4 mr-1" /> Price CSV
+                    </Button>
+                    <Button variant="secondary" size="sm" disabled={!s.lastExportInventoryAt} onClick={() => window.open(exportAPI.downloadLatestUrl(s.storeId, 'inventory'), '_blank')}>
+                      <Download className="w-4 h-4 mr-1" /> Inventory CSV
+                    </Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

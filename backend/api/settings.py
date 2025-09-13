@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "vendor",
     "marketplace",
     "products",
+    "export",
 ]
 
 # Middleware
