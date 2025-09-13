@@ -1,185 +1,172 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import { Button } from "../components/ui/button"
-import { 
-  FolderSyncIcon as Sync, 
-  Package, 
-  TrendingUp, 
-  AlertTriangle,
-  DollarSign
-} from "lucide-react"
+import { useEffect, useMemo, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { dashboardAPI, marketplaceAPI } from "../services/api";
+import { Package, Store as StoreIcon, Users, AlertTriangle, Upload, RefreshCw } from "lucide-react";
 
 export default function Dashboard() {
-  // Sample data - in a real app this would come from an API or props
-  const totalItems = [
-    { platform: "Amazon XYZ", count: 5000 },
-    { platform: "Mydal XYZ", count: 10000 },
-    { platform: "Mydeal PWD", count: 10000 },
-  ]
+  const [loading, setLoading] = useState(false);
+  const [marketplaces, setMarketplaces] = useState([]);
+  const [stores, setStores] = useState([]);
+  const [summary, setSummary] = useState(null);
+  const [vendorRows, setVendorRows] = useState([]);
 
-  const vendorData = [
-    { name: "eBay", date: "2/9/2025" },
-    { name: "Amazon", date: "2/9/2025" },
-    { name: "Dropshipzone", date: "2/9/2025" },
-    { name: "Idropship", date: "2/9/2025" },
-  ]
+  const [filters, setFilters] = useState({ marketplace: "", store: "" });
 
-  const marketplaceData = [
-    { name: "Mydeals", date: "2/9/2025" },
-    { name: "Amazon", date: "2/9/2025" },
-  ]
+  const params = useMemo(() => {
+    const p = {};
+    if (filters.marketplace) p.marketplace_id = filters.marketplace;
+    if (filters.store) p.store_id = filters.store;
+    return p;
+  }, [filters]);
+
+  const fetchAll = async () => {
+    try {
+      setLoading(true);
+      const [mp, storesData, summaryData, vendorsData] = await Promise.all([
+        marketplaces.length ? Promise.resolve(marketplaces) : marketplaceAPI.getMarketplaces(),
+        dashboardAPI.getStores(params),
+        dashboardAPI.getSummary(params),
+        dashboardAPI.getVendors(params),
+      ]);
+      if (!marketplaces.length) setMarketplaces(mp || []);
+      setStores(storesData || []);
+      setSummary(summaryData || null);
+      setVendorRows(vendorsData || []);
+    } catch (e) {
+      console.error("Failed to load dashboard", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchAll(); /* eslint-disable-next-line */ }, [filters.marketplace, filters.store]);
+
+  const marketplaceOptions = marketplaces.map(m => ({ id: m.id, name: m.name }));
+  const filteredStoreOptions = stores
+    .filter(() => true) // stores endpoint is already filtered; in a larger app we'd fetch stores list from marketplace API
+    .map(s => ({ id: s.storeId, name: `${s.storeName} (${s.marketplace.name})` }));
 
   return (
-    <div className="p-6 bg-walmart-gray min-h-screen">
-      {/* Header Section */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Dashboard</h1>
-          <p className="text-gray-600">Welcome back! Here's what's happening with your dropshipping business.</p>
-        </div>
-        <Button className="walmart-button-primary">
-          <Sync className="mr-2 h-5 w-5" />
-          Sync Now
+    <div className="p-6 bg-walmart-gray min-h-screen space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <Button onClick={fetchAll} disabled={loading} className="walmart-button-primary">
+          <RefreshCw className="mr-2 h-4 w-4" /> Refresh
         </Button>
       </div>
 
-      {/* Key Metrics Cards
-      <div className="grid gap-6 mb-8 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="walmart-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                <p className="text-3xl font-bold text-gray-900">0</p>
-                <div className="flex items-center mt-2">
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">12.5% vs last month</span>
-                </div>
-              </div>
-              <div className="bg-primary-50 p-3 rounded-full">
-                <Package className="h-6 w-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="walmart-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Products</p>
-                <p className="text-3xl font-bold text-gray-900">0</p>
-                <div className="flex items-center mt-2">
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">8.2% vs last month</span>
-                </div>
-              </div>
-              <div className="bg-green-50 p-3 rounded-full">
-                <Package className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="walmart-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
-                <p className="text-3xl font-bold text-gray-900">0</p>
-                <div className="flex items-center mt-2">
-                  <TrendingUp className="h-4 w-4 text-red-500 mr-1 rotate-180" />
-                  <span className="text-sm text-red-600">3.1% vs last month</span>
-                </div>
-              </div>
-              <div className="bg-yellow-50 p-3 rounded-full">
-                <AlertTriangle className="h-6 w-6 text-yellow-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="walmart-card">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Value</p>
-                <p className="text-3xl font-bold text-gray-900">$0.0M</p>
-                <div className="flex items-center mt-2">
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
-                  <span className="text-sm text-green-600">15.3% vs last month</span>
-                </div>
-              </div>
-              <div className="bg-purple-50 p-3 rounded-full">
-                <DollarSign className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div> */}
-
-      {/* Main Content Grid */}
-      <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {/* Total Items Added Card */}
-        <Card className="walmart-card">
-          <CardHeader className="walmart-gradient text-white rounded-t-lg">
-            <CardTitle className="flex items-center">
-              <Package className="mr-2 h-5 w-5" />
-              Total Items Added
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {totalItems.map((item) => (
-                <div key={item.platform} className="flex justify-between items-center">
-                  <span className="text-md text-gray-600">{item.platform}:</span>
-                  <span className="font-bold text-lg text-gray-900">{item.count.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Vendor Summary Card */}
-        <Card className="walmart-card">
-          <CardHeader className="bg-secondary text-gray-800 rounded-t-lg">
-            <CardTitle className="flex items-center">
-              <Package className="mr-2 h-5 w-5" />
-              Vendor App
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {vendorData.map((vendor) => (
-                <div key={vendor.name} className="flex justify-between items-center">
-                  <span className="text-md text-gray-600">{vendor.name}</span>
-                  <span className="text-md font-semibold text-gray-900">{vendor.date}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Marketplace Summary Card */}
-        <Card className="walmart-card">
-          <CardHeader className="bg-gray-200 text-gray-800 rounded-t-lg">
-            <CardTitle className="flex items-center">
-              <Package className="mr-2 h-5 w-5" />
-              Marketplace App
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {marketplaceData.map((marketplace) => (
-                <div key={marketplace.name} className="flex justify-between items-center">
-                  <span className="text-md text-gray-600">{marketplace.name}</span>
-                  <span className="text-md font-semibold text-gray-900">{marketplace.date}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="w-full md:w-64">
+          <label className="text-sm text-muted-foreground mb-1 block">Marketplace</label>
+          <Select value={filters.marketplace} onValueChange={(v) => setFilters(prev => ({ ...prev, marketplace: v, store: "" }))}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              {marketplaceOptions.map(m => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-full md:w-72">
+          <label className="text-sm text-muted-foreground mb-1 block">Store</label>
+          <Select value={filters.store} onValueChange={(v) => setFilters(prev => ({ ...prev, store: v }))}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All</SelectItem>
+              {filteredStoreOptions.map(s => (<SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      {/* KPI strip */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+        <Kpi title="Total Products" value={summary?.totalProducts || 0} icon={<Package className="h-5 w-5" />} />
+        <Kpi title="Active Stores" value={summary?.activeStores || 0} icon={<StoreIcon className="h-5 w-5" />} />
+        <Kpi title="Vendors Covered" value={summary?.vendorsCovered || 0} icon={<Users className="h-5 w-5" />} />
+        <Kpi title="Needs Rescrape" value={summary?.itemsNeedingRescrape || 0} icon={<AlertTriangle className="h-5 w-5" />} />
+        <Kpi title="Errors (24h)" value={summary?.recentErrors24h || 0} icon={<AlertTriangle className="h-5 w-5" />} />
+        <Kpi title="Uploads Today" value={summary?.uploadsToday || 0} icon={<Upload className="h-5 w-5" />} />
+      </div>
+
+      {/* Stores grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {stores.map(s => (
+          <Card key={s.storeId} className="walmart-card">
+            <CardHeader className="walmart-gradient text-white rounded-t-lg">
+              <CardTitle className="flex items-center justify-between">
+                <span>{s.storeName}</span>
+                <span className="text-xs bg-white/20 rounded px-2 py-0.5">{s.marketplace.code}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between"><span className="text-sm text-gray-600">Products</span><span className="font-semibold">{s.products}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-gray-600">Vendors</span><span className="font-semibold">{s.vendors}</span></div>
+              <div className="flex items-center justify-between"><span className="text-sm text-gray-600">Last scrape</span><span className="font-semibold">{s.lastScrapeAt ? new Date(s.lastScrapeAt).toLocaleString() : '—'}</span></div>
+              <div className="flex items-center justify-between text-sm"><span className="text-gray-600">Scraping</span><span className={s.scrapingEnabled ? 'text-green-600' : 'text-gray-500'}>{s.scrapingEnabled ? 'Enabled' : 'Disabled'}</span></div>
+              <div className="flex items-center justify-between text-sm"><span className="text-gray-600">Price updates</span><span className={s.priceUpdateEnabled ? 'text-green-600' : 'text-gray-500'}>{s.priceUpdateEnabled ? 'Enabled' : 'Disabled'}</span></div>
+              {String(s.marketplace.code || '').toLowerCase() === 'mydeal' && (
+                <div className="flex items-center justify-between text-sm"><span className="text-gray-600">MyDeal templates</span><span className={s.myDealTemplatesOk ? 'text-green-600' : 'text-red-600'}>{s.myDealTemplatesOk ? 'OK' : 'Missing'}</span></div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Vendors table */}
+      <Card className="walmart-card">
+        <CardHeader>
+          <CardTitle>Vendors</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead className="text-right">Products</TableHead>
+                  <TableHead className="text-right">Out of Stock</TableHead>
+                  <TableHead className="text-right">Avg Price</TableHead>
+                  <TableHead className="text-right">Updated (24h)</TableHead>
+                  <TableHead className="text-right">Errors (24h)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vendorRows.map(v => (
+                  <TableRow key={v.vendorId}>
+                    <TableCell>{v.vendorName}</TableCell>
+                    <TableCell className="text-right">{v.products}</TableCell>
+                    <TableCell className="text-right">{v.outOfStock}</TableCell>
+                    <TableCell className="text-right">{Number(v.avgFinalPrice || 0).toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{v.priceUpdated24h}</TableCell>
+                    <TableCell className="text-right">{v.recentErrors24h}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
+}
+
+function Kpi({ title, value, icon }){
+  return (
+    <Card className="walmart-card">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm text-gray-600">{title}</div>
+            <div className="text-2xl font-bold">{value}</div>
+          </div>
+          <div className="bg-primary/10 p-3 rounded-full">{icon}</div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 

@@ -105,6 +105,21 @@ export const marketplaceAPI = {
   },
 };
 
+export const dashboardAPI = {
+  getSummary: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiCall(`/dashboard/summary${q ? `?${q}` : ''}`);
+  },
+  getStores: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiCall(`/dashboard/stores${q ? `?${q}` : ''}`);
+  },
+  getVendors: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return apiCall(`/dashboard/vendors${q ? `?${q}` : ''}`);
+  }
+};
+
 // Helper function to transform frontend data to API format (vendor arrays)
 export const transformStoreDataForAPI = (storeInfo, priceSettingsByVendor, inventorySettingsByVendor, mydealSettingsState) => {
   const payload = {
