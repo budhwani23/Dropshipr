@@ -136,7 +136,9 @@ export const transformStoreDataForAPI = (storeInfo, priceSettingsByVendor, inven
   };
 
   // Attach MyDeal settings if marketplace is MyDeal
-  if (storeInfo.marketplaceName === 'MyDeal' || storeInfo.marketplaceCode === 'MyDeal' || mydealSettingsState) {
+  const mpName = String(storeInfo.marketplaceName || '').toLowerCase();
+  const mpCode = String(storeInfo.marketplaceCode || '').toLowerCase();
+  if (mpName === 'mydeal' || mpCode === 'mydeal' || mydealSettingsState) {
     payload.settings = payload.settings || {};
     payload.settings.mydeal = {
       price_template_upload_id: mydealSettingsState?.priceTemplateUploadId || null,

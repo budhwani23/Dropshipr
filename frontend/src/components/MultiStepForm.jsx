@@ -94,7 +94,10 @@ export default function CreateStoreForm() {
 
   // Derived marketplace code/name to help decisions
   const selectedMarketplace = useMemo(() => marketplaces.find(m => String(m.id) === String(storeInfo.marketplace)) || null, [marketplaces, storeInfo.marketplace]);
-  const isMyDeal = selectedMarketplace && (selectedMarketplace.code === 'MyDeal' || selectedMarketplace.name === 'MyDeal');
+  const isMyDeal = !!(selectedMarketplace && (
+    String(selectedMarketplace.code || '').toLowerCase() === 'mydeal' ||
+    String(selectedMarketplace.name || '').toLowerCase() === 'mydeal'
+  ));
 
   // Store Info Handlers
   const updateStoreInfo = (field, value) => {

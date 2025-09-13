@@ -56,7 +56,7 @@ def create_store(request, payload: StoreCreateSchema):
     )
 
     # Conditional MyDeal validation on create (require both templates if marketplace is MyDeal)
-    if marketplace.code == "MyDeal":
+    if str(getattr(marketplace, 'code', '')).lower() == "mydeal" or str(getattr(marketplace, 'name', '')).lower() == "mydeal":
         mydeal = (store.settings or {}).get("mydeal") or {}
         if not mydeal.get("price_template_upload_id") or not mydeal.get("inventory_template_upload_id"):
             raise HttpError(400, "MyDeal requires both price and inventory templates")
