@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { dashboardAPI, marketplaceAPI } from "../services/api";
 import { Package, Store as StoreIcon, Users, AlertTriangle, Upload, RefreshCw } from "lucide-react";
 
+const ALL_VALUE = "__ALL__";
+
 export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [marketplaces, setMarketplaces] = useState([]);
@@ -46,7 +48,7 @@ export default function Dashboard() {
 
   const marketplaceOptions = marketplaces.map(m => ({ id: m.id, name: m.name }));
   const filteredStoreOptions = stores
-    .filter(() => true) // stores endpoint is already filtered; in a larger app we'd fetch stores list from marketplace API
+    .filter(() => true)
     .map(s => ({ id: s.storeId, name: `${s.storeName} (${s.marketplace.name})` }));
 
   return (
@@ -62,20 +64,20 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row gap-4">
         <div className="w-full md:w-64">
           <label className="text-sm text-muted-foreground mb-1 block">Marketplace</label>
-          <Select value={filters.marketplace} onValueChange={(v) => setFilters(prev => ({ ...prev, marketplace: v, store: "" }))}>
+          <Select value={filters.marketplace || ALL_VALUE} onValueChange={(v) => setFilters(prev => ({ ...prev, marketplace: v === ALL_VALUE ? "" : v, store: "" }))}>
             <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value={ALL_VALUE}>All</SelectItem>
               {marketplaceOptions.map(m => (<SelectItem key={m.id} value={String(m.id)}>{m.name}</SelectItem>))}
             </SelectContent>
           </Select>
         </div>
         <div className="w-full md:w-72">
           <label className="text-sm text-muted-foreground mb-1 block">Store</label>
-          <Select value={filters.store} onValueChange={(v) => setFilters(prev => ({ ...prev, store: v }))}>
+          <Select value={filters.store || ALL_VALUE} onValueChange={(v) => setFilters(prev => ({ ...prev, store: v === ALL_VALUE ? "" : v }))}>
             <SelectTrigger className="w-full"><SelectValue placeholder="All" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value={ALL_VALUE}>All</SelectItem>
               {filteredStoreOptions.map(s => (<SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>))}
             </SelectContent>
           </Select>
