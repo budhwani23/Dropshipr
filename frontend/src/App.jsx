@@ -7,6 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 import StoreListingPage from "./components/settings";
 import AuthPage from "./components/AuthComponent";
 import MultiStepForm from "./components/MultiStepForm";
+import CreateStore from "./components/CreateStore";
 
 function App() {
   return (
@@ -29,7 +30,7 @@ function MainLayout() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/bulk-upload" element={<ProductMappingTable />} />
           <Route path="/settings" element={<StoreListingPage />} />
-          <Route path="/create-store" element={<MultiStepForm />} />
+          <Route path="/create-store" element={<CreateStore />} />
         </Routes>
       </main>
       <ToastContainer

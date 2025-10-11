@@ -19,6 +19,8 @@ class Store(models.Model):
     name = models.CharField(max_length=255)
     api_key_enc = models.TextField(blank=True)
     settings = models.JSONField(default=dict, blank=True)
+    # Method to ingest data/prices for this store
+    method_type = models.CharField(max_length=20, default="api")  # api | googleSheet | template
     # Add these fields for scraping configuration
     scraping_enabled = models.BooleanField(default=True)
     scraping_interval_hours = models.IntegerField(default=24)

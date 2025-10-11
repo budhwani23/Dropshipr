@@ -27,6 +27,11 @@ export default function CreateStore() {
     storeName: editingStore?.storeInfo?.storeName || "",
     marketplace: editingStore?.marketplace_id ? String(editingStore.marketplace_id) : "",
     apiKey: editingStore?.storeInfo?.apiKey || "",
+    methodType: editingStore?.storeInfo?.methodType || "", // Make sure this is initialized
+    apiToken: editingStore?.storeInfo?.apiToken || "",
+    googleSheetLink: editingStore?.storeInfo?.googleSheetLink || "",
+    googleSheetEmail: editingStore?.storeInfo?.googleSheetEmail || "",
+    templateFile: null,
   });
   const [priceSettingsByVendor, setPriceSettingsByVendor] = useState(editingStore?.priceSettingsByVendor || []);
   const [inventorySettingsByVendor, setInventorySettingsByVendor] = useState(editingStore?.inventorySettingsByVendor || []);
@@ -80,6 +85,23 @@ export default function CreateStore() {
           </SelectContent>
         </Select>
       </div>
+      <div className="space-y-2 relative z-10">
+        <Label htmlFor="methodType">Method Type</Label>
+        <Select
+          value={formData.methodType}
+          onValueChange={(value) => updateFormData("methodType", value)}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select Method Type" />
+          </SelectTrigger>
+          <SelectContent position="popper" className="z-50">
+            <SelectItem value="api">API</SelectItem>
+            <SelectItem value="googleSheet">Google Sheet</SelectItem>
+            <SelectItem value="template">Price & Inventory Template</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="apiKey">API Key (optional)</Label>
         <Input 
@@ -89,6 +111,52 @@ export default function CreateStore() {
           placeholder="Enter API key"
         />
       </div>
+
+      {/* Extra fields depending on method type */}
+      {formData.methodType === "api" && (
+        <div className="space-y-2 mt-4">
+          <Label htmlFor="apiToken">API Token</Label>
+          <Input 
+            id="apiToken" 
+            value={formData.apiToken}
+            onChange={(e) => updateFormData("apiToken", e.target.value)} 
+            placeholder="Enter API token" 
+          />
+        </div>
+      )}
+
+      {formData.methodType === "googleSheet" && (
+        <div className="space-y-2 mt-4">
+          <Label htmlFor="googleSheet">Google Sheet Link</Label>
+          <Input 
+            id="googleSheet" 
+            value={formData.googleSheetLink}
+            onChange={(e) => updateFormData("googleSheetLink", e.target.value)} 
+            placeholder="Enter Google Sheet URL" 
+          />
+          <Label htmlFor="email">Share with this Email</Label>
+          <Input 
+            id="email" 
+            value={formData.googleSheetEmail}
+            onChange={(e) => updateFormData("googleSheetEmail", e.target.value)} 
+            placeholder="Enter email address" 
+          />
+        </div>
+      )}
+
+      {formData.methodType === "template" && (
+        <div className="space-y-2 mt-4">
+          <Label htmlFor="fileUpload">Upload Template</Label>
+          <Input 
+            id="fileUpload" 
+            type="file" 
+            onChange={(e) => updateFormData("templateFile", e.target.files[0])} 
+          />
+          <div className="border-2 border-dashed p-4 text-center rounded-lg">
+            Drag & Drop your file here
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -131,7 +199,16 @@ export default function CreateStore() {
     }
     try {
       const payload = transformStoreDataForAPI(
-        { storeName: formData.storeName, marketplace: formData.marketplace, apiKey: formData.apiKey },
+        { 
+          storeName: formData.storeName, 
+          marketplace: formData.marketplace, 
+          apiKey: formData.apiKey,
+          methodType: formData.methodType,
+          apiToken: formData.apiToken,
+          googleSheetLink: formData.googleSheetLink,
+          googleSheetEmail: formData.googleSheetEmail,
+          templateFile: formData.templateFile,
+        },
         priceSettingsByVendor,
         inventorySettingsByVendor,
       );
@@ -201,4 +278,4 @@ export default function CreateStore() {
       </div>
     </div>
   );
-} 
+}

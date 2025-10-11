@@ -44,7 +44,11 @@ def create_store(request, payload: StoreCreateSchema):
     store = Store.objects.create(
         name=payload.name,
         marketplace=marketplace,
-        api_key_enc=payload.api_key_enc or ""
+        api_key_enc=payload.api_key_enc or "",
+        method_type=(payload.method_type or "api"),
+        api_token=(payload.api_token or ""),
+        google_sheet_link=(payload.google_sheet_link or ""),
+        google_sheet_email=(payload.google_sheet_email or "")
     )
 
     # Create price settings per vendor
@@ -99,6 +103,7 @@ def duplicate_store(request, store_id: int, payload: StoreDuplicateSchema):
         marketplace=marketplace,
         api_key_enc=payload.api_key_enc or source.api_key_enc or "",
         is_active=True,
+        method_type=getattr(source, 'method_type', 'api')
     )
 
     # Copy price settings
@@ -149,6 +154,10 @@ def update_store(request, store_id: int, payload: StoreCreateSchema):
     store.name = payload.name
     store.marketplace = marketplace
     store.api_key_enc = payload.api_key_enc or ""
+    store.method_type = (payload.method_type or store.method_type or "api")
+    store.api_token = payload.api_token or ""
+    store.google_sheet_link = payload.google_sheet_link or ""
+    store.google_sheet_email = payload.google_sheet_email or ""
     store.save()
 
     # Replace price settings for vendors provided in payload
@@ -230,6 +239,10 @@ def list_stores(request, marketplace_id: Optional[int] = None, active_only: bool
                 "name": store.marketplace.name
             },
             "api_key_enc": store.api_key_enc,
+            "method_type": getattr(store, 'method_type', 'api'),
+            "api_token": getattr(store, 'api_token', ""),
+            "google_sheet_link": getattr(store, 'google_sheet_link', ""),
+            "google_sheet_email": getattr(store, 'google_sheet_email', ""),
             "is_active": store.is_active,
             "created_at": store.created_at.isoformat(),
             "vendor_settings_summary": {
@@ -283,6 +296,7 @@ def get_store_response(store):
             "name": store.marketplace.name
         },
         "api_key_enc": store.api_key_enc,
+        "method_type": getattr(store, 'method_type', 'api'),
         "is_active": store.is_active,
         "created_at": store.created_at.isoformat(),
         "price_settings_by_vendor": price_settings_by_vendor,

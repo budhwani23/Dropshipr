@@ -162,6 +162,11 @@ export default function StoreListingPage() {
     return "Unknown";
   };
 
+  // Get method type for display
+  const getMethodType = (store) => {
+    return store.storeInfo?.methodType || store.method_type || "api";
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto py-10 px-4 md:px-6 max-w-6xl">
@@ -213,6 +218,7 @@ export default function StoreListingPage() {
             <TableRow>
               <TableHead className="px-4">Store Name</TableHead>
               <TableHead className="px-4">Marketplace</TableHead>
+              <TableHead className="px-4">Method Type</TableHead>
               <TableHead className="px-4">Active</TableHead>
               <TableHead className="px-4">Actions</TableHead>
             </TableRow>
@@ -223,6 +229,7 @@ export default function StoreListingPage() {
                 <TableRow key={store.id}>
                   <TableCell className="font-medium py-4 px-4">{getStoreName(store)}</TableCell>
                   <TableCell className="py-4 px-4">{getMarketplace(store)}</TableCell>
+                  <TableCell className="py-4 px-4">{getMethodType(store)}</TableCell>
                   <TableCell className="py-4 px-4">
                     <div className="flex items-center gap-2">
                       <Switch

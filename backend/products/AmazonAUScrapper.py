@@ -1,3 +1,4 @@
+# module imports (header of the file)
 from typing import List, Dict, Any, Optional, Tuple
 from collections import defaultdict
 from datetime import datetime
@@ -23,11 +24,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 import time
-# Amazon captcha solver
 from amazoncaptcha import AmazonCaptcha
+AmazonCaptcha = None
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,9 @@ class AmazonAUScrapper:
 
     @classmethod
     def solve_captcha_if_present(cls, driver: webdriver.Chrome):
+        if AmazonCaptcha is None:
+            # amazoncaptcha not installed; skip solving
+            return
         try:
             img = driver.find_element(By.XPATH, "//div[@class='a-row a-text-center']//img")
             link = img.get_attribute('src')

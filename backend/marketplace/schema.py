@@ -28,6 +28,7 @@ class StoreCreateSchema(Schema):
     name: str
     marketplace_id: int
     api_key_enc: Optional[str] = None
+    method_type: Optional[str] = None  # api | googleSheet | template
     price_settings_by_vendor: List[StorePriceSettingsPerVendorSchema]
     inventory_settings_by_vendor: List[StoreInventorySettingsPerVendorSchema]
 
@@ -41,6 +42,7 @@ class StoreResponseSchema(Schema):
     name: str
     marketplace: MarketplaceSchema
     api_key_enc: Optional[str]
+    method_type: Optional[str]
     is_active: bool
     created_at: str
     price_settings_by_vendor: List[StorePriceSettingsPerVendorSchema]

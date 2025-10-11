@@ -82,6 +82,10 @@ export const transformStoreDataForAPI = (storeInfo, priceSettingsByVendor, inven
     name: storeInfo.storeName,
     marketplace_id: parseInt(storeInfo.marketplace),
     api_key_enc: storeInfo.apiKey || "",
+    method_type: storeInfo.methodType || "api",
+    api_token: storeInfo.apiToken || "",
+    google_sheet_link: storeInfo.googleSheetLink || "",
+    google_sheet_email: storeInfo.googleSheetEmail || "",
     price_settings_by_vendor: (priceSettingsByVendor || []).map(v => ({
       vendor_id: v.vendorId,
       purchase_tax_percentage: parseFloat(v.purchaseTax) || 0,
@@ -117,6 +121,7 @@ export const transformStoreDataForFrontend = (apiStoreData) => {
       storeName: apiStoreData.name,
       marketplace: apiStoreData.marketplace.id.toString(),
       apiKey: apiStoreData.api_key_enc,
+      methodType: apiStoreData.method_type || "api",
     },
     priceSettingsByVendor: (apiStoreData.price_settings_by_vendor || []).map(s => ({
       vendorId: s.vendor_id,
@@ -138,4 +143,4 @@ export const transformStoreDataForFrontend = (apiStoreData) => {
       }))
     }))
   };
-}; 
+};
