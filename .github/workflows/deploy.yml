@@ -33,11 +33,11 @@ jobs:
             set -e
             cd /opt/dropshipr
 
+            # Write environment file
             cat > .env << 'EOF'
             APP_DOMAIN=${{ secrets.APP_DOMAIN }}
             N8N_DOMAIN=${{ secrets.N8N_DOMAIN }}
             LETS_ENCRYPT_EMAIL=${{ secrets.LETS_ENCRYPT_EMAIL }}
-
             DJANGO_SECRET_KEY=${{ secrets.DJANGO_SECRET_KEY }}
             DJANGO_SETTINGS_MODULE=api.settings
             DB_HOST=${{ secrets.DB_HOST }}
@@ -47,17 +47,30 @@ jobs:
             ALLOWED_HOSTS=${{ secrets.APP_DOMAIN }}
             CSRF_TRUSTED_ORIGINS=https://${{ secrets.APP_DOMAIN }}
             DEBUG=0
-
             N8N_HOST=${{ secrets.N8N_DOMAIN }}
             N8N_PROTOCOL=https
             N8N_PORT=5678
             WEBHOOK_URL=https://${{ secrets.N8N_DOMAIN }}/
             N8N_ENCRYPTION_KEY=${{ secrets.N8N_ENCRYPTION_KEY }}
-
             TZ=${{ secrets.TZ }}
+            DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+            DOCKER_TOKEN=${{ secrets.DOCKER_TOKEN }}
             EOF
 
+            # Login to Docker Hub to avoid rate limiting
+            echo "${{ secrets.DOCKER_TOKEN }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+            # Pull latest images
             docker compose pull
+
+            # Build web service
             docker compose build --pull web
+
+            # Start services
             docker compose up -d --remove-orphans
+
+            # Cleanup unused images
             docker image prune -f
+
+            # Logout from Docker Hub
+            docker logout
